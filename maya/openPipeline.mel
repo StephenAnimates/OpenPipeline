@@ -1,6 +1,13 @@
 //###########################################
+// File: openPipeline.mel
+// Description: Main initialization and setup script for openPipeline in Maya.
+//              It manages script and project path configurations using optionVars,
+//              sources necessary MEL/Python modules, and launches the main UI.
+//###########################################
+
+//###########################################
 // Name: sourceModule
-// Description: Finds all the mel files in a path (and potentially subpath) and sources them 
+// Description: Finds all the mel files in a given directory path and sources them
 // Input: path - The path to look in (string)
 // Returns: none
 //###########################################
@@ -27,22 +34,14 @@ global proc sourceModule(string $path)
 //###########################################
 global proc sourcePyModule(string $path)
 {
-	python("import sys");
-	python("sysPath = sys.path");
-	python("appendGo = 1");
-	python("for aPath in sysPath: \n if(aPath == '" + $path + "'): appendGo = 0");
-	// Append if necessary the python add-on path
-	python("if appendGo: \n sys.path.append('" + $path + "')\n print 'appending " + $path + "'");
-	// And Here comes the MEL to Python work-around
-	// Because os.path.exists returns true even when the path is invalid for importing
-	// python modules (probably due to being called through MEL) for some computers
-	// we take the back slash off of a given path so that
-	// the directory will be recognized when importing python modules
-	python("pyPath = '" + $path + "'");
-	python("pyPath = pyPath[:-1]");
-	python("appendGo = 1");
-	python("for aPath in sysPath: \n if(aPath == pyPath): appendGo = 0");
-	python("if appendGo: \n sys.path.append(pyPath)\n print 'appending %s' % pyPath");
+	string $pyCmd = "import sys\nimport os\n";
+	$pyCmd += "path = r'" + $path + "'\n";
+	$pyCmd += "if os.path.isdir(path) and path not in sys.path:\n";
+	$pyCmd += "    sys.path.append(path)\n";
+	$pyCmd += "    print 'Appending %s to sys.path' % path\n";
+
+	// Execute the python command block
+	python($pyCmd);
 	
 	string $pyFiles[] = `getFileList -folder $path -filespec "*.py"`;
 	string $eachFile;
@@ -61,7 +60,7 @@ global proc sourcePyModule(string $path)
 
 //###########################################
 // Name: openPipelineSetMainPath
-// Description: Sets the text for the project file path text field
+// Description: Sets the text for the main script path text field in the setup UI
 // Input: path - The path to set the field to (string)
 //				type - Not used (string)
 // Returns: none
@@ -74,7 +73,7 @@ global proc openPipelineSetMainPath(string $path, string $type)
 
 //###########################################
 // Name: openPipelineSetProjPathField
-// Description: Sets the text for the script path text field
+// Description: Sets the text for the project file path text field in the setup UI
 // Input: path - The path to set the field to (string)
 //				type - Not used (string)
 // Returns: none
@@ -112,9 +111,9 @@ global proc openPipelineProjPathFieldToggle()
 //###########################################
 // Name: openPipelineSetupExec
 // Description: Sets up the Project File Path and the Script Path depending on user input
-//							This method checks the user's input for validity 
-//							and then edits the 'openPipeline.mel' script to reflect the changes 
-//							to global variables $openPipeline_projectFilePath and $openPipeline_scriptPath
+//				This method checks the user's input for validity, saves the configuration
+//				to Maya optionVars for persistence, and then initializes the pipeline's 
+//				global variables $openPipeline_projectFilePath and $openPipeline_scriptPath
 // Input: none
 // Returns: none
 //###########################################
@@ -139,33 +138,13 @@ global proc openPipelineSetupExec()
         $error += ("Script path not valid. Make sure path \"" + $newScriptPath + "\" exists and contains the \"openPipeline\" folder.\n");
     else if (!openPipelineIsValidProjFilePath($newProjFilePath))
 	    $error += ("Project File path not valid. Make sure path \"" + $newProjFilePath + "\" exists.\n");
-    else if (!openPipelineIsEditableFile($mainFile))
-		$error += "openPipeline.mel not editable\n ";
+
     if (!size($error))
     {
-        string $newCode[];
-        int $fileId=`fopen $mainFile "r"`;
-        int $i=0;
-        string $nextLine= `fgetline $fileId`;
-        //read code and replace global variable assignments to new values
-        while ( size( $nextLine ) > 0 ) 
-        { 
-	        string $test1 = match("^[ 	]*global[ 	]+string[ 	]+$openPipeline_projectFilePath[ 	]*[=]{1}*",$nextLine);
-	        string $test2 = match("^[ 	]*global[ 	]+string[ 	]+$openPipeline_scriptPath[ 	]*[=]{1}*",$nextLine);
-	        if (size($test1))
-				$newCode[$i] = "	global string $openPipeline_projectFilePath = \""+$newProjFilePath+"\";\n";
-	        else if (size($test2))
-				$newCode[$i] = "	global string $openPipeline_scriptPath = \""+$newScriptPath+"\";\n";
-	        else
-	        $newCode[$i] = $nextLine;
-	        $nextLine= `fgetline $fileId`;
-	        $i++;
-        }
-        fclose $fileId;
-        $fileId=`fopen $mainFile "w"`;
-        for ($line in $newCode)
-        fprint $fileId $line;
-        fclose $fileId;
+        // Save paths to optionVars for persistence instead of rewriting the script file.
+        optionVar -sv "openPipeline_scriptPath" $newScriptPath;
+        optionVar -sv "openPipeline_projectFilePath" $newProjFilePath;
+
         deleteUI openPipelineInitSetupWindow;
       
 			//restart openPipeline with new values
@@ -210,6 +189,22 @@ global proc openPipelineSetupExec()
 }
 
 //###########################################
+// Name: openPipelineBrowseForPath
+// Description: Opens a directory browser and calls a callback proc with the result
+// Input: callbackProc - The procedure to call with the selected path (string)
+// Returns: none
+//###########################################
+global proc openPipelineBrowseForPath(string $callbackProc)
+{
+    // Use the modern fileDialog2 for directory selection
+    string $result[] = `fileDialog2 -fileMode 3 -caption "Select Folder"`;
+    if (size($result) > 0 && size($result[0]))
+    {
+        eval($callbackProc + " \"" + $result[0] + "/\" \"\"" );
+    }
+}
+
+//###########################################
 // Name: openPipelineSetup
 // Description: Creates the openPipeline Setup UI
 // Input: none
@@ -237,8 +232,7 @@ global proc openPipelineSetup()
             textField -h 20 -text $defPath -width 380 mainPathTextField ; 
             rowLayout -nc 2  -cw2 320 60 ;
                 text -label ""; 
-                //button -label "Browse..." -c "fileBrowserDialog -m 4 -fc \"openPipelineSetMainPath\" -an \"Find Location\" " -w 60; 
-                button -w 60 -l "Browse..." -c "fileBrowser \"openPipelineSetMainPath\" \"OK\" \"\" 4";
+                button -w 60 -l "Browse..." -c "openPipelineBrowseForPath(\"openPipelineSetMainPath\")";
             setParent..;
             separator -style "none" -height 10;
             text -fn "boldLabelFont" -label "Project File Setup:" -align "left" -width 280;
@@ -247,8 +241,7 @@ global proc openPipelineSetup()
             rowLayout -nc 3  -cw3 260 60 60 ;
                 text -label ""; 
                 button -label "Edit" -c "openPipelineProjPathFieldToggle" -w 60 op_projPathToggleButton; 
-                //button -label "Browse..." -en 0 -c "fileBrowserDialog -m 4 -fc \"openPipelineSetProjPathField\" -an \"Find Location\" " -w 60 op_projPathBrowseButton; 
-                button -w 60 -en 0 -l "Browse..." -c "fileBrowser \"openPipelineSetProjPathField\" \"OK\" \"\" 4" op_projPathBrowseButton;
+                button -w 60 -en 0 -l "Browse..." -c "openPipelineBrowseForPath(\"openPipelineSetProjPathField\")" op_projPathBrowseButton;
                 setParent..;
             separator -h 10 -style "none";
             rowLayout -nc 2 -cw2 190 190;
@@ -302,37 +295,21 @@ global proc  int openPipelineIsValidProjFilePath(string $folder)
 }
 
 //###########################################
-// Name: openPipelineIsEditableFile
-// Description: Checks of the given file is readable and writeable
-//							This is used to check if the openPipeline.mel file can be read and edited.
-// Input: filename - Full path to the file to be checked (string)
-// Returns: 1 if file is readable and writeable, 0 if not (int)
-//###########################################
-global proc int openPipelineIsEditableFile(string $filename)
-{
-    int $result = 1;
-    if (!`filetest -w $filename`)
-    {
-        $result = 0;
-    }
-    else if (!`filetest -r $filename`)
-    {
-        $result = 0;
-    }
-    return $result;
-}
-
-//###########################################
 // Name: openPipeline
-// Description: Main openPipeline procedure
+// Description: Main entry point for openPipeline. Retrieves stored path configurations,
+//              validates them, sources all required modules, and launches the UI.
 // Input: none
 // Returns: none
 //###########################################
 global proc openPipeline() 
 {
-	//the following two lines are edited by the script whenever the user changes the Script Path or the Project File Path
-	global string $openPipeline_scriptPath = "";
-	global string $openPipeline_projectFilePath = "";
+	// Retrieve stored paths from optionVars. This is the standard, safe way to persist settings in Maya.
+	global string $openPipeline_scriptPath;
+	global string $openPipeline_projectFilePath;
+
+	$openPipeline_scriptPath = `optionVar -q -exists "openPipeline_scriptPath"` ? `optionVar -q "openPipeline_scriptPath"` : "";
+	$openPipeline_projectFilePath = `optionVar -q -exists "openPipeline_projectFilePath"` ? `optionVar -q "openPipeline_projectFilePath"` : "";
+
     string $scriptsFolderName = "openPipeline";
     //Check if the paths are valid
     if ((!endsWith($openPipeline_scriptPath,"/"))&&(size($openPipeline_scriptPath)))
