@@ -4,6 +4,10 @@ Description: Main initialization and setup script for openPipeline in Maya.
              It provides a modern Python-based entry point to manage script
              and project path configurations using Maya optionVars, sources 
              necessary MEL and Python modules, and launches the main UI.
+             
+Original Framework: openPipeline by Kickstand
+License: 
+Source: 
 """
 
 import maya.cmds as cmds
@@ -36,20 +40,20 @@ def source_mel_module(path):
         None
     """
     if not os.path.isdir(path):
-        cmds.warning("Cannot source MEL modules from non-existent path: {}".format(path))
+        cmds.warning(f"Cannot source MEL modules from non-existent path: {path}")
         return
 
-    print("----- Sourcing MEL from {} ------".format(path))
+    print(f"----- Sourcing MEL from {path} ------")
     print("//////////////////////////////////////////////////////")
     for file_name in os.listdir(path):
         if file_name.endswith(".mel"):
             script_file = os.path.join(path, file_name).replace("\\", "/")
-            cmd_string = 'source "{}";'.format(script_file)
-            print("//// Source: {}".format(cmd_string))
+            cmd_string = f'source "{script_file}";'
+            print(f"//// Source: {cmd_string}")
             try:
                 mel.eval(cmd_string)
             except Exception as e:
-                cmds.warning("Failed to source {}: {}".format(script_file, e))
+                cmds.warning(f"Failed to source {script_file}: {e}")
 
 
 def source_python_module(path):
@@ -63,26 +67,26 @@ def source_python_module(path):
         None
     """
     if not os.path.isdir(path):
-        cmds.warning("Cannot source Python modules from non-existent path: {}".format(path))
+        cmds.warning(f"Cannot source Python modules from non-existent path: {path}")
         return
 
     # Add path to sys.path if it's not already there
     if path not in sys.path:
         sys.path.append(path)
-        print("Appending {} to sys.path".format(path))
+        print(f"Appending {path} to sys.path")
 
-    print("----- Sourcing Python from {} ------".format(path))
+    print(f"----- Sourcing Python from {path} ------")
     for file_name in os.listdir(path):
         if file_name.endswith(".py") and not file_name.startswith("__"):
             module_name = os.path.splitext(file_name)[0]
-            print("//// Python Source: {}".format(module_name))
+            print(f"//// Python Source: {module_name}")
             try:
                 # Import the module if it's the first time
                 module = importlib.import_module(module_name)
                 # Reload it to pick up any changes
                 importlib.reload(module)
             except Exception as e:
-                cmds.warning("Failed to load python module {}: {}".format(module_name, e))
+                cmds.warning(f"Failed to load python module {module_name}: {e}")
 
 
 def is_valid_script_path(folder):
@@ -210,9 +214,9 @@ def setup_exec(*args):
 
     error = ""
     if not is_valid_script_path(script_path):
-        error += 'Script path not valid. Make sure path "{}" exists and contains the "openPipeline" folder and loader script.\n'.format(script_path)
+        error += f'Script path not valid. Make sure path "{script_path}" exists and contains the "openPipeline" folder and loader script.\n'
     elif not is_valid_project_file_path(proj_file_path):
-        error += 'Project File path not valid. Make sure path "{}" exists.\n'.format(proj_file_path)
+        error += f'Project File path not valid. Make sure path "{proj_file_path}" exists.\n'
 
     if not error:
         # Save paths to optionVars for persistence
@@ -318,7 +322,7 @@ def openPipeline():
         try:
             mel.eval("openPipelineUI()")
         except Exception as e:
-            cmds.error("Failed to launch openPipelineUI: {}".format(e))
+            cmds.error(f"Failed to launch openPipelineUI: {e}")
 
     else:
         print("openPipeline paths are invalid or not set. Launching setup...")

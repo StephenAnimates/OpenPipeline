@@ -1,5 +1,49 @@
-### About
-OpenPipeline is an open source framework for managing animation production data and workflow.
-Its first implementation is a MEL-based plug-in for Autodesk Maya that handles specific aspects of production: automatic directory structures, file naming conventions, revision control, and modularity that makes multi-artist workflows possible.
+# OpenPipeline 2.0 for Maya
 
-Versions for other production applications are on the way.
+OpenPipeline is an open-source framework for managing animation production data and workflows. 
+
+Originally developed as a MEL-based plug-in by Kickstand, **OpenPipeline 2.0** has been completely modernized and refactored into **Python 3** to natively support modern Autodesk Maya environments (Maya 2026+). It handles specific, critical aspects of production: automatic directory structures, file naming conventions, revision control, and modularity that makes multi-artist workflows seamless.
+
+## ✨ Features
+* **Automated Directory Structures:** Ensures all project files are strictly organized and standardized across your team.
+* **Strict Naming Conventions:** Eliminates messy file names; the framework handles naming and versioning automatically.
+* **Revision Control:** Built-in system for managing `Workshop` (work-in-progress) and `Master` (approved) files.
+* **Asset & Shot Browsers:** Dedicated UI tabs for managing Assets, Sequences, Shots, and their respective components.
+* **Playblast & Notes Management:** Integrated tools for taking snapshots, recording playblasts, and leaving notes for artists.
+* **Modern Python API:** Extensible and fully accessible via Python 3.
+
+## ⚙️ Requirements
+* **Autodesk Maya 2026** (or newer recommended)
+* Python 3.11+ (Native to modern Maya)
+
+## 🚀 Installation & Setup
+1. Clone or download this repository to your local machine or network drive.
+2. Open Autodesk Maya.
+3. Open the **Script Editor** (Python tab).
+4. Run the following code to initialize the setup UI, replacing the path with your actual installation directory:
+
+```python
+import sys
+
+# Path to the directory containing the 'openpipeline' folder
+repo_path = "/path/to/OpenPipeline/maya"
+
+if repo_path not in sys.path:
+    sys.path.insert(0, repo_path)
+    
+import openPipeline_loader
+openPipeline_loader.openPipelineSetup()
+```
+5. Follow the on-screen prompts to define your Script Path and Project Path.
+
+## 📖 Usage
+Once installed and configured, you can launch the main UI at any time using:
+```python
+import openPipeline_loader
+openPipeline_loader.openPipeline()
+```
+*(Tip: Highlight the snippet above and drag it to a Maya shelf to create a quick-launch button!)*
+
+## ⚖️ License & Attribution
+**Original Framework:** openPipeline by Kickstand  
+**License:** MIT License (See `LICENSE` file for details)  
