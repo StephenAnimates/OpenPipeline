@@ -1,0 +1,14 @@
+# Auto-detect text files and normalize line endings across platforms
+* text=auto
+
+# Explicitly declare text files
+*.py text diff=python
+*.mel text
+*.xml text
+
+# Explicitly declare binary files (prevents image corruption)
+*.png binary
+*.jpg binary
+
+# Custom linguist language overrides
+*.mel linguist-language=Maya=MEL
